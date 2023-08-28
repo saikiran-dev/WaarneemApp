@@ -11,7 +11,6 @@
         :tick-labels="sortedPrices"
         :max="sortedPrices.length - 1"
         tick-size="4"
-        @change="sliderChange"
       ></v-range-slider>
     </div>
     <div>
@@ -112,7 +111,6 @@ export default {
       ]
       const localRecords = JSON.parse(JSON.stringify(this.records))
       localRecords.forEach((record) => {
-        console.log()
         const localShifts = []
         record.shifts.forEach((shift) => {
           if (
@@ -147,10 +145,6 @@ export default {
     },
     enableDrawer() {
       this.$store.commit('drawer/SET_DRAWER', true)
-    },
-
-    sliderChange(event) {
-      console.log('asdasdsa', event)
     },
   },
 }
