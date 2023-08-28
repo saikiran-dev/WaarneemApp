@@ -11,8 +11,6 @@ $ npm run dev
 
 # build for production and launch server
 $ npm run build
-$ npm run start
-
-# generate static project
-$ npm run generate
 ```
+
+## CRUD a simple page to create and edit shifts for healthcare workers
