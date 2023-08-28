@@ -2,10 +2,6 @@
   <v-app dark>
     <v-app-bar :clipped-left="clipped" fixed app>
       <v-toolbar-title>{{ title }}</v-toolbar-title>
-      <v-spacer />
-      <v-btn icon @click.stop="rightDrawer = !rightDrawer">
-        <v-icon>mdi-menu</v-icon>
-      </v-btn>
     </v-app-bar>
     <v-main>
       <v-container>
@@ -38,7 +34,7 @@ export default {
       clipped: false,
       fixed: false,
       right: true,
-      title: 'Vuetify.js',
+      title: 'WaarneemApp',
       rightDrawer: false,
     }
   },
@@ -53,7 +49,9 @@ export default {
     },
     rightDrawer() {
       this.$store.commit('drawer/SET_DRAWER', this.rightDrawer)
-      this.$store.commit('record/SET_RECORD', {})
+      if (!this.rightDrawer) {
+        this.$store.commit('record/SET_RECORD', {})
+      }
     },
   },
 }

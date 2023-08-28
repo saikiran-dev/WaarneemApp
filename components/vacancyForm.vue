@@ -42,51 +42,101 @@
           <v-date-picker
             v-model="formData.dates"
             @change="isCalendar = false"
+            @input="updateShifts"
             multiple
           ></v-date-picker>
         </v-menu>
+        <div
+          class="mb-6"
+          v-for="shiftItem in formData.shifts"
+          :key="shiftItem.date"
+        >
+          <!-- WORK SHIFT FORM -->
+          <v-row no-gutters justify="space-between">
+            <v-col cols="auto">
+              <p>{{ shiftItem.date }}</p>
+            </v-col>
+            <v-col cols="auto">
+              <v-btn x-small width="100%" @click="removeShift(shiftItem.date)"
+                >delete</v-btn
+              >
+            </v-col>
+          </v-row>
+          <!-- startTimePicker -->
+          <v-card elevation="5" outlined>
+            <v-card-text>
+              <v-row no-gutters>
+                <v-col>
+                  <StartTimePicker
+                    :isEditRecord="isEditRecord"
+                    :rules="rules"
+                    @update="updateStartDate"
+                    :shiftItem="shiftItem"
+                  />
+                </v-col>
+                <v-col>
+                  <EndTimePicker
+                    :isEditRecord="isEditRecord"
+                    :rules="rules"
+                    @update="updateEndDate"
+                    :shiftItem="shiftItem"
+                  />
+                </v-col>
+                <v-col>
+                  <v-text-field
+                    type="number"
+                    v-model="shiftItem.price"
+                    :rules="[rules.required]"
+                    outlined
+                    placeholder="Price"
+                    append-icon="mdi-currency-eur"
+                  ></v-text-field>
+                </v-col>
+              </v-row>
+              <v-row no-gutters>
+                <v-col>
+                  <v-select
+                    :items="types"
+                    outlined
+                    v-model="shiftItem.selectedType"
+                    placeholder="Select Type"
+                    :rules="[rules.required]"
+                  ></v-select>
+                </v-col>
+              </v-row>
+            </v-card-text>
+          </v-card>
+        </div>
       </v-form>
     </v-list>
 
-    <div v-if="isEditRecord">
-      <div class="d-flex" v-for="shift in formData.shifts" :key="shift.date">
-        <WorkerShifts
-          @update="changeShifts"
-          :date="shift.date"
-          :editShift="shift"
-          @delete="removeShift"
-          ref="childComponent"
-        />
-      </div>
-    </div>
-    <div v-else class="d-flex" v-for="date in formData.dates" :key="date">
-      <WorkerShifts
-        ref="childComponent"
-        @update="changeShifts"
-        :date="date"
-        @delete="removeShift"
-        @formValid="setShiftForm"
-      />
-    </div>
-
-    <v-row align="center" justify="center">
-      <v-col cols="auto">
+    <v-row no-gutters>
+      <v-col class="mr-4" v-if="isEditRecord">
         <v-btn outlined x-large width="100%" @click="deleteRecord"
           >Delete</v-btn
         >
       </v-col>
-      <v-col cols="auto">
-        <v-btn x-large width="100%" @click="saveRecord">Save</v-btn>
+      <v-col>
+        <v-btn
+          class="white--text"
+          color="grey darken-3"
+          x-large
+          width="100%"
+          @click="saveRecord"
+          >Save</v-btn
+        >
       </v-col>
     </v-row>
   </div>
 </template>
 <script>
 import { mapState } from 'vuex'
-import workerShifts from './workerShifts.vue'
+import StartTimePicker from './elements/StartTimePicker.vue'
+import EndTimePicker from './elements/EndTimePicker.vue'
 export default {
   components: {
-    workerShifts,
+    StartTimePicker,
+    EndTimePicker,
   },
   data() {
     return {
@@ -98,6 +148,9 @@ export default {
         dates: (value) =>
           (value && value.length > 0 && value.length < 11) ||
           'Min of 1 and max of 10 dates are allowed',
+        endTime: (startTime, value) =>
+          this.validateEndTime(startTime, value) ||
+          'End Time should be greater than start time',
       },
       formData: {
         id: crypto.randomUUID(),
@@ -106,8 +159,16 @@ export default {
         shifts: [],
         dates: [],
       },
+      shift: {
+        id: crypto.randomUUID(),
+        startTime: '',
+        endTime: '',
+        price: null,
+        selectedType: '',
+        date: '',
+      },
       isCalendar: false,
-      isShiftFormValid: false,
+      types: ['Consultation', 'Telephone', 'Ambulance'],
     }
   },
   computed: {
@@ -130,22 +191,11 @@ export default {
       this.$store.commit('drawer/SET_DRAWER', false)
       this.$store.commit('record/DELETE_RECORD', this.formData.id)
     },
-    changeShifts(event) {
-      this.formData.shifts = this.formData.shifts.filter(
-        (shift) => shift.date !== event.date
-      )
-      this.formData.shifts.push(event)
-    },
-
     saveRecord() {
       if (this.$refs.vacancyform.validate()) {
         this.$store.commit('record/SET_RECORD', this.formData)
         this.$store.commit('drawer/SET_DRAWER', false)
       }
-    },
-
-    setShiftForm(value) {
-      this.isShiftFormValid = value
     },
     removeShift(shiftDate) {
       this.formData.shifts = this.formData.shifts.filter(
@@ -155,6 +205,70 @@ export default {
       this.formData.dates = this.formData.dates.filter(
         (date) => date !== shiftDate
       )
+    },
+
+    updateShifts(dates) {
+      if (!this.formData.shifts.length) {
+        const tempObj = { ...this.shift, date: this.formData.dates[0] }
+        this.formData.shifts.push(tempObj)
+      } else {
+        dates.forEach((date) => {
+          const check = this.formData.shifts.find(
+            (shift) => shift.date === date
+          )
+          if (check === undefined) {
+            const tempObj = { ...this.shift }
+            tempObj.id = crypto.randomUUID()
+            tempObj.date = date
+            this.formData.shifts.push(tempObj)
+          }
+        })
+
+        // ADDITIONAL FUNCTIONALITY
+        this.formData.shifts = this.formData.shifts.filter((shift) =>
+          dates.includes(shift.date)
+        )
+      }
+    },
+
+    updateStartDate(shiftTime) {
+      const shiftIndex = this.formData.shifts.findIndex(
+        (shift) => shift.date === shiftTime.date
+      )
+      if (shiftIndex !== -1) {
+        this.formData.shifts[shiftIndex].startTime = shiftTime.startTime
+      }
+    },
+    updateEndDate(shiftTime) {
+      const shiftIndex = this.formData.shifts.findIndex(
+        (shift) => shift.date === shiftTime.date
+      )
+      if (shiftIndex !== -1) {
+        this.formData.shifts[shiftIndex].endTime = shiftTime.endTime
+      }
+    },
+
+    validateEndTime(strStartTime, strEndTime) {
+      if (strStartTime && strEndTime) {
+        let hours = this.getHours(strStartTime)
+        let minutes = this.getMinutes(strStartTime)
+        const startTime = new Date().setHours(hours, minutes, 0)
+
+        hours = this.getHours(strEndTime)
+        minutes = this.getMinutes(strEndTime)
+        const endTime = new Date().setHours(hours, minutes, 0)
+
+        return endTime > startTime
+      }
+      return true
+    },
+    getHours(time) {
+      const hours = parseInt(time.split(':')[0])
+      return hours
+    },
+    getMinutes(time) {
+      const minutes = parseInt(time.split(':')[1])
+      return minutes
     },
   },
 }

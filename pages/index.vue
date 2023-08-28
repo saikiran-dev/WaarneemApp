@@ -5,7 +5,14 @@
         Filters
         <p class="underline-decoration"></p>
       </h2>
-      <v-range-slider></v-range-slider>
+      <v-range-slider
+        v-if="sortedPrices && rangeValue"
+        v-model="rangeValue"
+        :tick-labels="sortedPrices"
+        :max="sortedPrices.length - 1"
+        tick-size="4"
+        @change="sliderChange"
+      ></v-range-slider>
     </div>
     <div>
       <v-row align="center" justify="space-between">
@@ -16,19 +23,25 @@
           </h2>
         </v-col>
         <v-col cols="auto">
-          <v-btn variant="flat" block size="x-large" @click="enableDrawer"
+          <v-btn
+            class="white--text"
+            color="grey darken-3"
+            variant="flat"
+            block
+            size="x-large"
+            @click="enableDrawer"
             >ADD SHIFT</v-btn
           >
         </v-col>
       </v-row>
 
       <v-card
-        v-for="(record, index) in records"
-        :key="index"
         class="my-6 rounded-lg"
+        v-for="(record, index) in filteredRecords"
+        :key="index"
         :elevation="20"
       >
-        <v-row align="center" justify="space-between">
+        <v-row class="pr-4" align="center" justify="space-between">
           <v-col cols="auto">
             <v-card-title>{{ record.title }}</v-card-title>
           </v-col>
@@ -44,7 +57,9 @@
           <SimpleTable :shifts="record.shifts" />
         </v-card-text>
       </v-card>
-      <h4 class="text-center mt-6" v-if="!records.length">No Shifts to View</h4>
+      <h4 class="text-center mt-6" v-if="!filteredRecords.length">
+        No Shifts to View
+      </h4>
     </div>
   </div>
 </template>
@@ -59,8 +74,9 @@ export default {
   },
   data() {
     return {
-      range: [],
       sortedPrices: [],
+      rangeValue: [],
+      filteredRecords: [],
     }
   },
   computed: {
@@ -80,29 +96,61 @@ export default {
     },
   },
   watch: {
-    shifts() {
+    rangeValue() {
+      this.filteredRecords = []
+      this.filterRecords()
+    },
+  },
+  mounted() {
+    this.setRanges()
+  },
+  methods: {
+    filterRecords() {
+      const price = [
+        this.sortedPrices[this.rangeValue[0]],
+        this.sortedPrices[this.rangeValue[1]],
+      ]
+      const localRecords = JSON.parse(JSON.stringify(this.records))
+      localRecords.forEach((record) => {
+        console.log()
+        const localShifts = []
+        record.shifts.forEach((shift) => {
+          if (
+            parseInt(shift.price) >= price[0] &&
+            parseInt(shift.price) <= price[1]
+          ) {
+            localShifts.push(shift)
+          }
+        })
+        if (localShifts.length) {
+          const recordObject = { ...record }
+          recordObject.shifts = localShifts
+          this.filteredRecords.push(recordObject)
+        }
+      })
+    },
+    setRanges() {
       const prices = []
       this.shifts.forEach((shift) => {
         prices.push(+shift.price)
       })
       prices.sort((priceOne, priceTwo) => priceOne - priceTwo)
       this.sortedPrices = prices
-      this.rangeValue = [
-        this.sortedPrices[0],
-        this.sortedPrices[this.sortedPrices.length - 1],
-      ]
+      this.rangeValue = [0, this.sortedPrices.length - 1]
     },
-  },
-  // mounted() {
-
-  // },
-  methods: {
     editContent(shift) {
       this.$store.commit('drawer/SET_DRAWER', true)
-      this.$store.commit('record/SET_EDIT_RECORD', shift)
+      const record = this.records.find((record) => record.id === shift.id)
+      if (record !== undefined) {
+        this.$store.commit('record/SET_EDIT_RECORD', record)
+      }
     },
     enableDrawer() {
       this.$store.commit('drawer/SET_DRAWER', true)
+    },
+
+    sliderChange(event) {
+      console.log('asdasdsa', event)
     },
   },
 }

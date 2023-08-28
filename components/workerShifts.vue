@@ -125,11 +125,6 @@ export default {
 
   methods: {
     updateParentForm() {
-      console.log(
-        this.$refs,
-        'shiftformshiftform',
-        this.$refs.shiftform.validate()
-      )
       if (this.$refs.shiftform.validate()) {
         this.$emit('formValid', true)
         this.$emit('update', this.shift)
